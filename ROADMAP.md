@@ -32,8 +32,14 @@ Code to read:
 
 Notes to write:
 - What is Fineract, and what problem does it solve?
+  Apache Fineract is an open-source core banking platform built with Java and Spring Boot.
+  It provides backend infrastructure for managing savings accounts, loans, and transactions.
+  It is designed around reliability patterns such as idempotent command handling,
+  double-entry accounting, and transactional batch processing.
 - How does its module structure relate to my digital-wallet project?
-
+  My digital-wallet shares the same core concerns: account management, fund transfers,
+  and balance consistency. The fineract-savings module is most similar to my wallet,
+  and fineract-command handles the idempotency patterns I want to apply.
 ---
 
 ## Day 2 — TDD in Practice
