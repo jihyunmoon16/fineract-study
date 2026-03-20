@@ -56,6 +56,7 @@ Code to read:
 
 Notes to write:
 - My understanding of Red-Green-Refactor after seeing it in a real codebase
+  Red-Green-Refactor means writing the test first, watching it fail (Red), then implementing the code to make it pass (Green), then cleaning up (Refactor).
 
 Wallet project output:
 - Commit one test written before the implementation
