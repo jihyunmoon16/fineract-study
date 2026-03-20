@@ -25,18 +25,6 @@ This folder is a standalone study repository scaffold for:
    - why it matters for a wallet system
    - how you would explain it in an interview
 
-## Publish As Separate Repo
-
-This folder is designed to work as an independent git repository.
-
-Typical flow:
-
-1. `cd study-notes`
-2. `git init -b main`
-3. `git add .`
-4. `git commit -m "Initial study notes"`
-5. `git remote add origin <your-repo-url>`
-6. `git push -u origin main`
 
 ## Study Rules
 
