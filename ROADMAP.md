@@ -1,139 +1,213 @@
-# 1-Week Roadmap
+# Fineract Source Study — Digital Wallet Upgrade
 
-## Goal
+> Reading through the [Apache Fineract](https://github.com/apache/fineract) source code to understand
+> how a production-grade financial backend is structured, and applying the patterns to my own
+> digital-wallet project.
 
-By the end of this week, be able to explain and apply:
+---
 
-- TDD
-- idempotency
-- transaction boundaries
-- concurrency and locking
-- multitenancy and context propagation
-- ledger/accounting basics
-- messaging and event-driven design
+## What I Want to Understand by the End of the Week
 
-## Day 1
+- TDD practices in a real financial codebase
+- Idempotency design for payment requests
+- Transaction boundary decisions and rollback strategy
+- Concurrency control and locking approaches
+- Reliable event publishing with the Outbox pattern
+- Ledger and double-entry accounting fundamentals
 
-- [ ] Read root `README.md`
-- [ ] Identify the roles of `fineract-provider`, `fineract-core`, `fineract-command`, `fineract-accounting`, `fineract-security`
-- [ ] Run one small unit test
-- [ ] Write a 10-line summary of what Fineract is
+---
+
+## Day 1 — Project Structure
+
+**Goal**: Understand how Fineract is organized before reading any implementation code.
+
+Tasks:
+- Read `README.md` and `settings.gradle`
+- Identify the roles of `fineract-provider`, `fineract-core`, `fineract-command`, `fineract-accounting`, `fineract-security`
+- Run one unit test to confirm the build works
 
 Code to read:
-
 - `README.md`
 - `settings.gradle`
 
-Output:
+Notes to write:
+- What is Fineract, and what problem does it solve?
+- How does its module structure relate to my digital-wallet project?
 
-- [ ] `What is Fineract?`
-- [ ] `How is this relevant to my digital-wallet?`
+---
 
-## Day 2
+## Day 2 — TDD in Practice
 
-- [ ] Review TDD flow with one small utility test
-- [ ] Add one tiny test-first change
-- [ ] Write down red-green-refactor in your own words
+**Goal**: See how Fineract approaches test-first development, then apply it in my own project.
+
+Tasks:
+- Trace the Red-Green-Refactor cycle in `SQLBuilderTest`
+- Add one test-first change to my wallet project
 
 Code to read:
-
 - `fineract-core/src/main/java/org/apache/fineract/infrastructure/security/utils/SQLBuilder.java`
 - `fineract-core/src/test/java/org/apache/fineract/infrastructure/security/utils/SQLBuilderTest.java`
 
-Output:
+Notes to write:
+- My understanding of Red-Green-Refactor after seeing it in a real codebase
 
-- [ ] `I can explain TDD in 1 minute`
-- [ ] `I completed one test-first change`
+Wallet project output:
+- Commit one test written before the implementation
 
-## Day 3
+---
 
-- [ ] Study command handling
-- [ ] Study idempotency persistence
-- [ ] Design how wallet transfers should prevent duplicate processing
+## Day 3 — Idempotency
+
+**Goal**: Understand how Fineract prevents duplicate command execution, then apply the same thinking to wallet transfers.
+
+Tasks:
+- Study `CommandEntity` — how is the idempotency key stored and checked?
+- Design how the wallet should handle a duplicate transfer request
 
 Code to read:
-
 - `fineract-command/README.md`
 - `fineract-command/src/main/java/org/apache/fineract/command/persistence/domain/CommandEntity.java`
 - `fineract-command/src/main/java/org/apache/fineract/command/persistence/domain/CommandRepository.java`
 
-Output:
+Notes to write:
+- How to design idempotent transfer requests
+- What should a duplicate request return, and why?
 
-- [ ] `How to design idempotent transfer requests`
-- [ ] `What response should repeated requests return?`
+Wallet project output:
+- Commit `IdempotencyRecord.java` — modelled after `CommandEntity`
+  ```java
+  // Fields: idempotency_key (unique), status, response_body, created_at
+  ```
 
-## Day 4
+---
 
-- [ ] Study batch execution and enclosing transactions
-- [ ] Understand rollback behavior
-- [ ] Compare one-big-transaction vs step-by-step execution
+## Day 4 — Transaction Boundaries
+
+**Goal**: Learn how Fineract decides where to draw transaction boundaries in batch operations.
+
+Tasks:
+- Study `BatchApiServiceImpl` — one big transaction vs step-by-step
+- Review and annotate the transaction boundaries in my own `TransferService`
 
 Code to read:
-
 - `fineract-core/src/main/java/org/apache/fineract/batch/api/BatchApiResource.java`
 - `fineract-core/src/main/java/org/apache/fineract/batch/service/BatchApiServiceImpl.java`
 
-Output:
+Notes to write:
+- How to decide where a transaction boundary should be
+- Retry and rollback tradeoffs
 
-- [ ] `I can explain transaction boundary choices`
-- [ ] `I can explain retry + rollback tradeoffs`
+Wallet project output:
+- Commit annotated `TransferService.java` with comments explaining boundary decisions
+  ```java
+  // Are debit and credit inside the same transaction?
+  // Does event publishing happen after the commit?
+  ```
 
-## Day 5
+---
 
-- [ ] Study locking and concurrent processing
-- [ ] Write one race condition example for a wallet
-- [ ] Compare lock table vs optimistic locking
+## Day 5 — Concurrency and Locking
+
+**Goal**: Understand Fineract's lock table pattern for concurrent loan processing, compare with optimistic locking.
+
+Tasks:
+- Study `LoanLockingServiceImpl` and `LoanAccountLock`
+- Write a concrete concurrent withdrawal scenario for the wallet
+- Decide between lock table and `@Version` optimistic locking
 
 Code to read:
-
 - `fineract-provider/src/main/java/org/apache/fineract/cob/service/InlineLoanCOBExecutorServiceImpl.java`
 - `fineract-provider/src/main/java/org/apache/fineract/cob/loan/LoanLockingServiceImpl.java`
 - `fineract-provider/src/main/java/org/apache/fineract/cob/domain/LoanAccountLock.java`
 
-Output:
+Notes to write:
+- How to prevent double spending in a wallet
+- When to use a lock table vs optimistic locking
 
-- [ ] `How to prevent double spending`
-- [ ] `When to use lock table`
+Wallet project output:
+- Commit locking strategy applied to `WalletAccount.java`
+  ```java
+  // Option A: @Version (optimistic)
+  // Option B: @Lock(PESSIMISTIC_WRITE) on repository method
+  ```
 
-## Day 6
+---
 
-- [ ] Study tenant handling and thread-local context
-- [ ] Study async context propagation
-- [ ] Note what breaks when async code loses tenant/auth context
+## Day 6 — Reliable Event Publishing (Outbox Pattern)
 
-Code to read:
+**Goal**: Understand how Fineract's Reliable Event Framework guarantees that events are not lost when a transaction rolls back.
 
-- `fineract-security/src/main/java/org/apache/fineract/infrastructure/security/filter/TenantAwareAuthenticationFilter.java`
-- `fineract-provider/src/main/java/org/apache/fineract/cob/loan/ContextAwareTaskDecorator.java`
-- `fineract-provider/src/main/java/org/apache/fineract/cob/service/AsyncLoanCOBExecutorServiceImpl.java`
-
-Output:
-
-- [ ] `I can explain multitenancy in a backend system`
-- [ ] `I can explain why ThreadLocal is dangerous in async code`
-
-## Day 7
-
-- [ ] Study accounting and journal concepts
-- [ ] Review messaging and external events
-- [ ] Prepare interview answers for production incidents
+Tasks:
+- Trace how events are persisted to DB before being sent to Kafka
+- Compare with `@TransactionalEventListener(phase = AFTER_COMMIT)`
+- Apply the Outbox pattern to the wallet's transfer flow
 
 Code to read:
+- `README.md` — Kafka / ActiveMQ / Reliable Event Framework section
+- `fineract-provider` — `ExternalEventService` related classes
 
+Notes to write:
+- What is the Outbox pattern and what problem does it solve?
+- How does it differ from `@TransactionalEventListener`?
+
+Wallet project output:
+- Commit `OutboxEvent.java` + `OutboxEventRepository.java`
+  ```java
+  // Fields: aggregate_type, aggregate_id, event_type, payload, status, created_at
+  ```
+
+---
+
+## Day 7 — Ledger and Journal Entries
+
+**Goal**: Understand why a financial system needs a ledger, not just a balance column.
+
+Tasks:
+- Study `AccountingValidations` and the `journalentry` package
+- Design how a single wallet transfer maps to journal entries
+
+Code to read:
 - `fineract-accounting/src/main/java/org/apache/fineract/accounting/common/AccountingValidations.java`
 - `fineract-accounting/src/main/java/org/apache/fineract/accounting/journalentry/`
-- `README.md` section on Kafka and ActiveMQ
 
-Output:
+Notes to write:
+- Why balance alone is not enough for a financial system
+- Why double-entry bookkeeping matters
 
-- [ ] `Why balance alone is not enough`
-- [ ] `Why ledger and journal entries matter`
-- [ ] `How I would handle a duplicate event in production`
+Wallet project output:
+- Commit `LedgerEntry.java`
+  ```java
+  // One transfer = two rows
+  // DEBIT  | sender account   | -10,000
+  // CREDIT | receiver account | +10,000
+  ```
 
-## End Of Week Check
+---
 
-- [ ] I can explain idempotency using my wallet example
-- [ ] I can explain transaction boundaries using a transfer example
-- [ ] I can explain locking using concurrent withdrawal example
-- [ ] I can explain multitenancy and async context propagation
-- [ ] I can explain why a finance backend should have ledger thinking
+## Day 8 (Weekend) — Messaging and Event Handling
+
+**Goal**: Round out the event-driven design picture with duplicate event handling.
+
+Tasks:
+- Study strategies for handling duplicate Kafka events
+- Summarize how idempotency, the Outbox pattern, and event deduplication work together
+
+Notes to write:
+- End-to-end flow: transfer request → DB commit → Outbox → Kafka → consumer
+- How to handle a duplicate event safely at the consumer side
+
+---
+
+## Wallet Project Commits This Week
+
+```
+feat: add idempotency record entity          # Day 3
+feat: annotate transaction boundaries        # Day 4
+feat: add optimistic locking to account      # Day 5
+feat: add outbox event entity                # Day 6
+feat: add ledger entry entity                # Day 7
+```
+
+---
+
+*Study notes based on reading the [Apache Fineract](https://github.com/apache/fineract) open-source codebase.*
