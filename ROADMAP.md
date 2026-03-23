@@ -77,8 +77,12 @@ Code to read:
 - `fineract-command/src/main/java/org/apache/fineract/command/persistence/domain/CommandRepository.java`
 
 Notes to write:
-- How to design idempotent transfer requests
+- How to design idempotent transfer requests?
+  On every incoming request, check whether the idempotency key already exists in the store. If it does, the request is a duplicate and should not be processed again.
 - What should a duplicate request return, and why?
+  It should return the same response as the first successful request. This ensures the client gets a consistent result without triggering side effects like double charging or double transfer.
+- Redis vs DB tradeoff?
+  DB storage is persistent and supports audit trails, making it suitable for regulated financial systems. Redis is lightweight and faster for lookups, but data is lost after TTL expires — which makes it unsuitable as the sole store for financial audit history.
 
 Wallet project output:
 - Commit `IdempotencyRecord.java` — modelled after `CommandEntity`
