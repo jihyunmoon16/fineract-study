@@ -141,7 +141,9 @@ Code to read:
 
 Notes to write:
 - How to prevent double spending in a wallet
+  Two mechanisms work together. Idempotency key prevents duplicate requests with the same key from being processed twice. Optimistic locking (@Version) prevents concurrent requests from simultaneously modifying the same account balance — one will succeed and the other will fail and retry.
 - When to use a lock table vs optimistic locking
+  Use a lock table when correctness is critical and conflicts are frequent, such as batch processing where multiple threads dynamically pick up the same work. Use @Version optimistic locking when conflicts are rare, such as normal real-time transfers where the same account is unlikely to be hit simultaneously.
 
 Wallet project output:
 - Commit locking strategy applied to `WalletAccount.java`
