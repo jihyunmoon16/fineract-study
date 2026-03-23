@@ -106,7 +106,15 @@ Code to read:
 
 Notes to write:
 - How to decide where a transaction boundary should be
+  Transaction boundary should be drawn around operations that must succeed or fail together. For example, debit and credit in a transfer must be in the same transaction — if credit fails, debit must be rolled back.
 - Retry and rollback tradeoffs
+  Retry is appropriate for transient failures such as a temporary DB outage or network timeout, where retrying may succeed. However, retry should not be used for permanent failures such as insufficient balance or invalid account. The risk of retry is that if the first attempt already committed but the response was lost, retrying without idempotency could cause duplicate processing. This is why retry must always be combined with an idempotency key — so that even if the same request is retried multiple times, it is only processed once.
+
+How Fineract actually implements this:
+- Transaction boundary: TransactionTemplate with ISOLATION_REPEATABLE_READ
+- Retry: Retry.decorateSupplier() wraps the entire batch execution
+- Permanent errors skip retry: caught as NonTransientDataAccessException
+- Parent failure cascades to children via parentRequestFailedRecursive()
 
 Wallet project output:
 - Commit annotated `TransferService.java` with comments explaining boundary decisions
