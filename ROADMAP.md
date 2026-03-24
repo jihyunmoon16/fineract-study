@@ -169,7 +169,9 @@ Code to read:
 
 Notes to write:
 - What is the Outbox pattern and what problem does it solve?
+  The Outbox pattern persists events to the DB within the same transaction as the business operation, before sending them to Kafka. If the transaction rolls back, the event is rolled back too — guaranteeing that no event is published for a failed operation.
 - How does it differ from `@TransactionalEventListener`?
+  @TransactionalEventListener(phase = AFTER_COMMIT) sends the event directly to Kafka after the transaction commits. If Kafka is down at that moment, the event is lost with no way to retry. The Outbox pattern avoids this by keeping events in the DB with a PENDING status — even if Kafka is down, the event stays in the DB and can be retried later when Kafka recovers.
 
 Wallet project output:
 - Commit `OutboxEvent.java` + `OutboxEventRepository.java`
@@ -193,7 +195,9 @@ Code to read:
 
 Notes to write:
 - Why balance alone is not enough for a financial system
-- Why double-entry bookkeeping matters
+  Balance only shows the current state, not why it changed. Without debit and credit records, users cannot understand what transactions led to their current balance.
+- Why do ledger and journal entries matter?
+  Journal entries provide a permanent record of every transaction — when money was sent, when it was received, and by whom. This makes it possible to investigate disputes, prove correctness, and satisfy audit requirements. Without them, there is no way to trace or verify what actually happened.
 
 Wallet project output:
 - Commit `LedgerEntry.java`
@@ -215,7 +219,9 @@ Tasks:
 
 Notes to write:
 - End-to-end flow: transfer request → DB commit → Outbox → Kafka → consumer
+  A transfer request arrives → debit and credit are processed within a single transaction → an OutboxEvent is saved to the DB in the same transaction → the transaction commits → a scheduler picks up PENDING outbox events and publishes them to Kafka → the consumer receives the event and processes it.
 - How to handle a duplicate event safely at the consumer side
+  Each event includes an idempotency key generated at publish time. When the consumer receives an event, it checks whether the key already exists in its processed event store. If it does, the event is ignored. If not, the event is processed and the key is saved. This guarantees exactly-once processing even if Kafka delivers the same event more than once.
 
 ---
 
